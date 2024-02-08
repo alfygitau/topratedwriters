@@ -1,0 +1,37 @@
+.order-card-container {
+  border: 3px solid var(--secondary-color);
+  width: 350px;
+  padding: 20px;
+  height: 400px;
+}
+.order-card-container form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+  align-items: center;
+  gap: 15px;
+}
+.order-card-title {
+  text-align: center;
+}
+.order-card-container form select {
+  width: 300px;
+  padding: 10px;
+  border: 2px solid #c4e2f3;
+}
+.order-card-price {
+  width: 300px;
+  display: flex;
+  justify-content: space-between;
+}
+.order-card-button {
+  width: 300px;
+  background-color: var(--secondary-color-unique);
+  border: none;
+  outline: none;
+  color: white;
+  padding: 12px;
+}
+.order-card-container form select:focus {
+  outline: none;
+}

@@ -1,0 +1,22 @@
+:root {
+  --primary-color: #2f96d5;
+  --secondary-color-unique: #f46767;
+  --secondary-color: #fde092;
+  --primary-white-color: #ffffff;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "IBM Plex Sans", "Lato", sans-serif;
+}
+
+a {
+  text-decoration: none;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
