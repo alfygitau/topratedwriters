@@ -15,7 +15,6 @@ export class OrderRevisionService {
     private readonly userService: UsersService,
     private readonly orderService: OrderService,
   ) {}
-
   async createOrderRevision(
     orderId: number,
     userId: number,
@@ -31,5 +30,17 @@ export class OrderRevisionService {
     });
 
     return await this.orderRevisionRepository.save(newRevision);
+  }
+
+  getAllRevisions() {
+    return this.orderRevisionRepository.find({
+      relations: ['order'],
+    });
+  }
+  getOrderRevisionById(revisionId) {
+    return this.orderRevisionRepository.findOne({
+      where: { revision_id: revisionId },
+      relations: ['order'],
+    });
   }
 }

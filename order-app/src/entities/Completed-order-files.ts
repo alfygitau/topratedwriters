@@ -8,20 +8,15 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Order } from './Order';
-import { OrderRevision } from './Order-revision';
 
-@Entity('revision_files')
-export class RevisionFile {
+@Entity('complete_order_files')
+export class CompletedOrderFile {
   @PrimaryGeneratedColumn({ name: 'file_id' })
   fileId: number;
 
-  @ManyToOne(() => Order, (order) => order.order_id, { nullable: false })
+  @ManyToOne(() => Order, { nullable: false })
   @JoinColumn({ name: 'order' })
   order: Order;
-
-  @ManyToOne(() => OrderRevision, (revision) => revision.revision_id, { nullable: false })
-  @JoinColumn({ name: 'revision_id' })
-  revision_id: OrderRevision;
 
   @Column({ name: 'file_url' })
   fileUrl: string;

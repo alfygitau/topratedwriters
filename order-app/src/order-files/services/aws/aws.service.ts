@@ -12,13 +12,16 @@ export class AwsService {
       secretAccessKey: this.configService.get('AWS_SECRET_ACCESS_KEY'),
     });
 
-    const uploadPromises = files.map(file => this.uploadOrderFile(s3, file));
+    console.log(files);
+
+    const uploadPromises = files?.map((file) => this.uploadOrderFile(s3, file));
     const fileUrls = await Promise.all(uploadPromises);
     return fileUrls;
   }
 
   private uploadOrderFile(s3: S3, file: Express.Multer.File): Promise<string> {
     return new Promise<string>((resolve, reject) => {
+      console.log(this.configService.get('AWS_S3_BUCKET_NAME'));
       const uploadOptions: S3.PutObjectRequest = {
         Bucket: this.configService.get('AWS_S3_BUCKET_NAME'),
         Key: `order-files/${file.originalname}`,
@@ -34,6 +37,4 @@ export class AwsService {
       });
     });
   }
-
-  
 }

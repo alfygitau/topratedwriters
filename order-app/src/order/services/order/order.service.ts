@@ -1,8 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { CompletedOrderFile } from 'src/entities/Completed-order-files';
 import { Order } from 'src/entities/Order';
 import { OrderFile } from 'src/entities/Order-files';
+import { OrderMessage } from 'src/entities/Order-message';
+import { User } from 'src/entities/User';
 import { AwsService } from 'src/order-files/services/aws/aws.service';
+import { CreateOrderMessage } from 'src/order/dtos/CreateOrderMessage.dto';
+import { UpdateOrder } from 'src/order/dtos/UpdateOrder.dto';
 import { CreateOrderParams } from 'src/utils/orderTypes';
 import { Repository } from 'typeorm';
 
@@ -16,15 +21,23 @@ export class OrderService {
 
     @InjectRepository(OrderFile)
     private readonly OrderFilesRepository: Repository<OrderFile>,
+
+    @InjectRepository(CompletedOrderFile)
+    private readonly completeOrderFilesRepository: Repository<CompletedOrderFile>,
+
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+
+    @InjectRepository(OrderMessage)
+    private readonly orderMessageRepository: Repository<OrderMessage>,
   ) {}
 
   async createOrder(orderPayload: CreateOrderParams) {
     const now = new Date();
     const timestamp = now.toISOString().replace(/[-:.TZ]/g, '');
-    const public_id = `OD-${timestamp}-${this.getNextBigIntValue()}`;
+
     let newOrder = await this.orderRepository.create({
       ...orderPayload,
-      public_id,
     });
 
     return await this.orderRepository.save(newOrder);
@@ -35,10 +48,11 @@ export class OrderService {
     return this.lastBigIntValue;
   }
 
-  async getAllOrders(userId) {
+  async getAllOrders(userId, status) {
     return this.orderRepository.find({
       where: {
         user: { userId },
+        order_status: status,
       },
       relations: [
         'order_type',
@@ -55,28 +69,108 @@ export class OrderService {
       ],
     });
   }
+  async assignOrder(orderId: number) {
+    let order = await this.getOrderById(orderId);
+    // Check if the order exists
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+    // Update the order_status field
+    order.order_status = 'Assigned';
 
-  getAvailableOrders(availableStatus: string) {
+    // Save the updated Order back to the database
+    const updatedOrder = await this.orderRepository.save(order);
+    return updatedOrder;
+  }
+
+  async reAssignOrder(orderId: number) {
+    let order = await this.getOrderById(orderId);
+    // Check if the order exists
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+    // Update the order_status field
+    order.order_status = 'Active';
+
+    // Save the updated Order back to the database
+    const updatedOrder = await this.orderRepository.save(order);
+    return updatedOrder;
+  }
+
+  async cancelOrder(orderId: number) {
+    let order = await this.getOrderById(orderId);
+    // Check if the order exists
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+    // Update the order_status field
+    order.order_status = 'Cancelled';
+
+    // Save the updated Order back to the database
+    const updatedOrder = await this.orderRepository.save(order);
+    return updatedOrder;
+  }
+
+  async submitOrder(orderId: number, files: Express.Multer.File[]) {
+    const uploadedFileUrls = await this.awsService.uploadOrderFiles(files);
+    let order = await this.getOrderById(orderId);
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+
+    const uploadedFiles: CompletedOrderFile[] = [];
+    // Create a new OrderFile instance
+    for (let i = 0; i < uploadedFileUrls.length; i++) {
+      const url = uploadedFileUrls[i];
+      const orderFile = new CompletedOrderFile();
+      orderFile.order = order;
+      orderFile.fileUrl = url;
+
+      // Save the OrderFile
+      const savedOrderFile = await this.completeOrderFilesRepository.save(
+        orderFile,
+      );
+      uploadedFiles.push(savedOrderFile);
+    }
+
+    const completeOrderFileWithUrls = {
+      fileId: uploadedFiles[0].fileId,
+      order: uploadedFiles[0].order,
+      fileUrl: uploadedFiles.map((file) => file.fileUrl),
+    };
+    order.order_status = 'Completed';
+    const updatedOrder = await this.orderRepository.save(order);
+
+    return { order: updatedOrder, files: completeOrderFileWithUrls };
+  }
+
+  getAvailableOrders() {
     return this.orderRepository.find({
-      where: { order_status: availableStatus },
+      where: { order_status: 'Available' },
     });
   }
 
-  getCancelledOrders(cancelledStatus: string) {
+  getCancelledOrders() {
     return this.orderRepository.find({
-      where: { order_status: cancelledStatus },
+      where: { order_status: 'Cancelled' },
     });
   }
 
-  getCompletedOrders(completedStatus: string) {
+  getCompletedOrders() {
     return this.orderRepository.find({
-      where: { order_status: completedStatus },
+      where: { order_status: 'Completed' },
     });
   }
 
-  getPendingOrders(pendingStatus) {
+  getPendingOrders() {
     return this.orderRepository.find({
-      where: { order_status: pendingStatus },
+      where: { order_status: 'Pending' },
+    });
+  }
+
+  getAssignedOrders() {
+    return this.orderRepository.find({
+      where: { order_status: 'Assigned' },
     });
   }
 
@@ -96,6 +190,7 @@ export class OrderService {
         'order_files',
         'revision_files',
         'order_revision',
+        'user',
       ],
     });
 
@@ -132,6 +227,29 @@ export class OrderService {
     return orderFileWithUrls;
   }
 
+  async removeOrderFile(fileId: number) {
+    // Retrieve the OrderFile entity based on the fileId
+    const orderFileToRemove = await this.OrderFilesRepository.findOne({
+      where: { fileId },
+      relations: ['order'],
+    });
+
+    if (!orderFileToRemove) {
+      throw new NotFoundException(`OrderFile with ID ${fileId} not found`);
+    }
+
+    const order = orderFileToRemove.order;
+    if (order) {
+      order.order_files = order.order_files?.filter(
+        (file) => file.fileId !== fileId,
+      );
+      await this.orderRepository.save(order);
+    }
+
+    // Delete file from the database
+    await this.OrderFilesRepository.remove(orderFileToRemove);
+  }
+
   async getOrderFiles(orderId: number) {
     let order = await this.getOrderById(orderId);
     return order.order_files;
@@ -140,5 +258,46 @@ export class OrderService {
   async getOrderRevisions(orderId: number) {
     let order = await this.getOrderById(orderId);
     return order.order_revision;
+  }
+
+  async getOrderMessages(orderId: number) {
+    let order = await this.getOrderById(orderId);
+    return order.order_messages;
+  }
+  async createOrderMessage(orderId, payload: CreateOrderMessage) {
+    let order = await this.getOrderById(orderId);
+    const user = await this.userRepository.findOne({
+      where: { userId: payload.user_id },
+    });
+    const orderMessage = new OrderMessage();
+    orderMessage.order_id = order;
+    orderMessage.user_id = user;
+    orderMessage.message_content = payload.message_content;
+
+    return this.orderMessageRepository.save(orderMessage);
+  }
+  async updateOrder(orderId, payload: UpdateOrder) {
+    const order = await this.getOrderById(orderId);
+
+    order.academic_level = payload.academic_level;
+    order.order_style = payload.order_style;
+    order.order_subject = payload.order_subject;
+    order.order_category = payload.order_category;
+    order.order_deadline = payload.order_deadline;
+    order.order_pages = payload.order_pages;
+    order.order_references = payload.order_references;
+    order.order_type = payload.order_type;
+
+    order.order_instructions = payload.order_instructions;
+    order.order_status = payload.order_status;
+    order.order_spacing = payload.order_spacing;
+    order.order_additional_information = payload.order_additional_information;
+    order.order_topic = payload.order_topic;
+    order.order_amount = payload.order_amount;
+    order.phone_number = payload.phone_number;
+
+    const updatedOrder = await this.orderRepository.save(order);
+
+    return updatedOrder;
   }
 }

@@ -10,9 +10,22 @@ import { OrderService } from 'src/order/services/order/order.service';
 import { OrderFile } from 'src/entities/Order-files';
 import { AwsService } from 'src/order-files/services/aws/aws.service';
 import { ConfigService } from '@nestjs/config';
+import { CompletedOrderFile } from 'src/entities/Completed-order-files';
+import { OrderMessage } from 'src/entities/Order-message';
+import { Rating } from 'src/entities/Rating';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Order, OrderRevision, User, OrderFile])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Order,
+      OrderRevision,
+      User,
+      OrderFile,
+      CompletedOrderFile,
+      OrderMessage,
+      Rating
+    ]),
+  ],
   controllers: [OrderRevisionController],
   providers: [
     OrderRevisionService,
