@@ -37,6 +37,10 @@ import { OrderRevisionModule } from './order-revision/order-revision.module';
 import { Rating } from './entities/Rating';
 import { CompletedOrderFile } from './entities/Completed-order-files';
 import { PaypalModule } from './paypal/paypal.module';
+import { ManualOrder } from './entities/ManualOrder';
+import { ManualOrderModule } from './manual-order/manual-order.module';
+import { ManualOrderFilesModule } from './manual-order-files/manual-order-files.module';
+import { ReportModule } from './report/report.module';
 
 @Module({
   imports: [
@@ -66,6 +70,7 @@ import { PaypalModule } from './paypal/paypal.module';
         OrderRevision,
         Rating,
         CompletedOrderFile,
+        ManualOrder,
       ],
       logging: true,
       synchronize: true,
@@ -87,6 +92,9 @@ import { PaypalModule } from './paypal/paypal.module';
     RevisionFilesModule,
     OrderRevisionModule,
     PaypalModule,
+    ManualOrderModule,
+    ManualOrderFilesModule,
+    ReportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -34,7 +34,7 @@ export class UsersController {
     return plainToClass(SerializedUser, user);
   }
 
-  @UseGuards(AuthGuard, AdminAuthGuard)
+  // @UseGuards(AdminAuthGuard)
   @Get(':id')
   getUserById(@Param('id', ParseIntPipe) id: number) {
     const user = this.userService.findUserById(id);
@@ -42,7 +42,7 @@ export class UsersController {
     return plainToClass(SerializedUser, user);
   }
 
-  @UseGuards(AuthGuard)
+  // @UseGuards(AuthGuard)
   @Patch(':id')
   updateUser(@Param('id') id: number, @Body() userDetails: UpdateUser) {
     const user = this.userService.updateUser(id, userDetails);

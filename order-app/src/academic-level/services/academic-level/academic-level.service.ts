@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AcademicLevel } from 'src/entities/Academic-level';
 import { CreateAcademicLevelParams } from 'src/utils/types';
@@ -21,5 +21,30 @@ export class AcademicLevelService {
 
   async findAllAcademicLevels() {
     return this.academicLevelRepository.find();
+  }
+
+  async updateAcademicLevel(id, updatePayload: CreateAcademicLevelParams) {
+    const academicLevel = await this.academicLevelRepository.findOne({
+      where: { academic_level_id: id },
+    });
+
+    if (!academicLevel) {
+      throw new NotFoundException(`Academic level with ID '${id}' not found.`);
+    }
+    // Apply updates to the entity
+    Object.assign(academicLevel, updatePayload);
+
+    // Save the updated entity
+    const updatedAcademicLevel = await this.academicLevelRepository.save(
+      academicLevel,
+    );
+    return updatedAcademicLevel;
+  }
+
+  async deleteAcademicLevel(id: number): Promise<void> {
+    const academicLevel = await this.academicLevelRepository.findOne({
+      where: { academic_level_id: id },
+    });
+    await this.academicLevelRepository.remove(academicLevel);
   }
 }

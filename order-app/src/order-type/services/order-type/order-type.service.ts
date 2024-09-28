@@ -25,8 +25,21 @@ export class OrderTypeService {
     return order_type;
   }
 
-  async getAllOrderTypes() {
-    return await this.orderTypeRepository.find();
+  async getAllOrderTypes(page: number, itemsPerPage: number) {
+    // If page and itemsPerPage are not provided, fetch all data
+    if (!page || !itemsPerPage) {
+      return await this.orderTypeRepository.find();
+    }
+    const skip = (Number(page) - 1) * Number(itemsPerPage);
+    const orderTypes = await this.orderTypeRepository.find({
+      take: itemsPerPage,
+      skip,
+    });
+
+    // Query to count the total number of order types
+    const itemsCount = await this.orderTypeRepository.count();
+
+    return { orderTypes, page, itemsPerPage, itemsCount };
   }
 
   async updateOrderType(orderTypeId: number, orderTypeData: OrderTypeParams) {
